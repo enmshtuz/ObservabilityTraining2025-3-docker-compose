@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import signal
 import psycopg2
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -10,7 +11,17 @@ DB_NAME = os.getenv("POSTGRES_DB", "testdb")
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
+def is_ready():
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1;")
+            cursor.fetchone()
+        return True
+    except Exception:
+        return False
+
 def connect_db():
+    global conn
     while True:
         try:
             conn = psycopg2.connect(
@@ -20,12 +31,11 @@ def connect_db():
                 host=DB_HOST,
                 port=DB_PORT
             )
-            # Perform a simple readiness check
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT 1;")
-                cursor.fetchone()
-            print("Database connection established")
-            return conn
+            if is_ready():
+                print("Database connection established")
+                return conn
+            else:
+                print("Database connection established but not ready")
         except Exception as e:
             print(f"Waiting for DB connection: {e}")
             time.sleep(2)
@@ -43,26 +53,23 @@ cursor.execute("""
 conn.commit()
 
 class CRUDHandler(BaseHTTPRequestHandler):
-    
+
     def do_GET(self):
-        
-        # Health check endpoint
+
+        # Liveness probe
         if self.path == "/health":
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b"Healthy")
             return
-        
-        
+
         # Readiness probe
         if self.path == "/ready":
-            try:
-                cursor.execute("SELECT 1;")
-                cursor.fetchone()
+            if is_ready():
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(b"Ready")
-            except Exception:
+            else:
                 self.send_response(503)
                 self.end_headers()
                 self.wfile.write(b"Not Ready")
@@ -173,6 +180,17 @@ def run_server():
     server_address = ("", 8080)
     httpd = HTTPServer(server_address, CRUDHandler)
     print("Starting server on port 8080...")
+
+    # Graceful shutdown handling
+    def shutdown_server(signum, frame):
+        print("\nReceived shutdown signal, stopping server...")
+        httpd.shutdown()
+        print("Server stopped gracefully")
+
+    # Register signals for graceful shutdown
+    signal.signal(signal.SIGINT, shutdown_server)
+    signal.signal(signal.SIGTERM, shutdown_server)
+
     httpd.serve_forever()
 
 if __name__ == "__main__":
