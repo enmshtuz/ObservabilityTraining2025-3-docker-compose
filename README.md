@@ -5,7 +5,6 @@ This project defines a simple Python CRUD service for a PostgreSQL database. It 
 
 ## Prerequisites
 - Docker
-- 
 - Docker Compose
 
 ## Usage
@@ -50,7 +49,7 @@ DELETE /delete/<item_id>
 Deletes the item with the specified ID.
 
 ### Health Check Endpoints
-- **Health Check:** `GET /health` - Returns "Healthy" if the service is running.
+- **Liveness Probe:** `GET /health` - Returns "Healthy" if the service is running.
 - **Readiness Probe:** `GET /ready` - Checks database connectivity and returns "Ready" if the connection is successful.
 
 ## Example Usage
