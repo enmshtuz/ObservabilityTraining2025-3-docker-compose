@@ -1,0 +1,33 @@
+version: '3.10'
+
+services:
+  db:
+    image: postgres:15
+    container_name: pg
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "$$POSTGRES_USER"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  crud-service:
+    build: .
+    container_name: crud-service
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+    ports:
+      - "5050:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
