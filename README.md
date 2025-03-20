@@ -5,7 +5,6 @@ This project defines a simple Python CRUD service for a PostgreSQL database. It 
 
 ## Prerequisites
 - Docker
-- Docker Compose
 
 ## Usage
 
